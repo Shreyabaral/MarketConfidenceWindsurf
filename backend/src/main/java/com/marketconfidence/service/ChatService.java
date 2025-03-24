@@ -20,7 +20,7 @@ public class ChatService {
     private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
     // These would be used when integrating with the actual Hugging Face API
     // private static final String HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/deepseek-ai/deepseek-chat";
-    // private static final String HUGGINGFACE_API_KEY = "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";
+ 
     
     public ChatMessage createUserMessage(String content) {
         return new ChatMessage(
