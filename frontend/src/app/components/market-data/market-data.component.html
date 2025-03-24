@@ -1,0 +1,60 @@
+<div class="market-data-container">
+  <div class="header">
+    <h2 style="font-size: 1.5rem; font-weight: 600; color: #1f2937;">MSCI World Index</h2>
+    <button 
+      (click)="refreshData()" 
+      style="background-color: #3b82f6; color: white; border: none; border-radius: 0.375rem; padding: 0.5rem 1rem; cursor: pointer;"
+    >
+      Refresh
+    </button>
+  </div>
+
+  <div *ngIf="loading" style="text-align: center; padding: 2rem;">
+    <p>Loading market data...</p>
+  </div>
+
+  <div *ngIf="error" style="color: #ef4444; text-align: center; padding: 2rem;">
+    <p>Error loading market data. Please try again.</p>
+  </div>
+
+  <div *ngIf="!loading && !error" class="summary-card" style="background-color: white; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <p style="font-size: 2rem; font-weight: 700; color: #111827;">{{ currentPrice | number:'1.2-2' }}</p>
+        <div [ngStyle]="{'color': priceChange >= 0 ? '#10b981' : '#ef4444'}" style="display: flex; align-items: center;">
+          <span>{{ priceChange | number:'1.2-2' }}</span>
+          <span style="margin-left: 0.5rem;">({{ percentChange | number:'1.2-2' }}%)</span>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <p style="color: #6b7280; font-size: 0.875rem;">Previous Close</p>
+        <p style="font-weight: 600; color: #374151;">{{ previousClose | number:'1.2-2' }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && !error && marketData.length > 0" class="data-table-container" style="background-color: white; border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <th style="padding: 0.75rem; text-align: left; color: #6b7280;">Date</th>
+          <th style="padding: 0.75rem; text-align: right; color: #6b7280;">Open</th>
+          <th style="padding: 0.75rem; text-align: right; color: #6b7280;">High</th>
+          <th style="padding: 0.75rem; text-align: right; color: #6b7280;">Low</th>
+          <th style="padding: 0.75rem; text-align: right; color: #6b7280;">Close</th>
+          <th style="padding: 0.75rem; text-align: right; color: #6b7280;">Volume</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let data of marketData.slice(0, 10)" style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 0.75rem; color: #374151;">{{ data.date | date:'MMM d, y' }}</td>
+          <td style="padding: 0.75rem; text-align: right; color: #374151;">{{ data.open | number:'1.2-2' }}</td>
+          <td style="padding: 0.75rem; text-align: right; color: #374151;">{{ data.high | number:'1.2-2' }}</td>
+          <td style="padding: 0.75rem; text-align: right; color: #374151;">{{ data.low | number:'1.2-2' }}</td>
+          <td style="padding: 0.75rem; text-align: right; color: #374151;">{{ data.close | number:'1.2-2' }}</td>
+          <td style="padding: 0.75rem; text-align: right; color: #374151;">{{ data.volume | number }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

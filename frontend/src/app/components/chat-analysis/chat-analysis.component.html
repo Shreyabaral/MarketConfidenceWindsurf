@@ -1,0 +1,51 @@
+<div class="flex flex-col" style="background-color: white; border-radius: 0.5rem; padding: 1.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
+  <h2 style="font-size: 1.5rem; font-weight: 600; color: #1f2937; margin-bottom: 1rem;">Market Event Analysis</h2>
+  <p style="color: #6b7280; margin-bottom: 1rem;">Analyze how global events impact market confidence using DeepSeek LLM</p>
+  
+  <div class="flex flex-row" style="height: 500px;">
+    <!-- Chat messages section -->
+    <div class="chat-messages w-1/2" style="overflow-y: auto; margin-bottom: 1rem; padding: 1rem; background-color: #f9fafb; border-radius: 0.375rem;">
+      <div *ngIf="messages.length === 0" style="color: #6b7280; text-align: center; padding: 2rem;">
+        <p>No messages yet. Start a conversation by sending a message about a global event.</p>
+      </div>
+      
+      <div *ngFor="let message of messages" 
+        [ngClass]="{'user-message': message.role === 'user', 'assistant-message': message.role === 'assistant'}"
+        style="margin-bottom: 1rem; padding: 0.75rem; border-radius: 0.375rem; max-width: 90%;">
+        <div [style.background-color]="message.role === 'user' ? '#3b82f6' : '#f3f4f6'"
+             [style.color]="message.role === 'user' ? 'white' : '#1f2937'"
+             [style.margin-left]="message.role === 'user' ? 'auto' : '0'"
+             [style.margin-right]="message.role === 'assistant' ? 'auto' : '0'"
+             style="padding: 0.75rem; border-radius: 0.375rem;">
+          <div [innerHTML]="formatMessage(message.content)"></div>
+          <div style="font-size: 0.75rem; opacity: 0.7; text-align: right; margin-top: 0.25rem;">
+            {{ message.timestamp | date:'short' }}
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Event impact chart section -->
+    <div class="w-1/2 ml-4" style="overflow-y: auto; background-color: #f9fafb; border-radius: 0.375rem; padding: 1rem;">
+      <h3 style="font-size: 1.25rem; font-weight: 500; color: #1f2937; margin-bottom: 1rem;">Market Impact Visualization</h3>
+      <app-event-impact-chart [eventData]="eventImpactData" height="350px"></app-event-impact-chart>
+    </div>
+  </div>
+  
+  <div class="chat-input mt-4" style="display: flex; gap: 0.5rem;">
+    <input 
+      type="text" 
+      [(ngModel)]="newMessage" 
+      (keyup.enter)="sendMessage()" 
+      placeholder="Describe a global event to analyze (e.g., 'COVID-19 pandemic', 'Dot-com bubble')" 
+      style="flex: 1; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; outline: none;"
+    />
+    <button 
+      (click)="sendMessage()" 
+      [disabled]="isLoading || newMessage.trim() === ''"
+      style="background-color: #3b82f6; color: white; border: none; border-radius: 0.375rem; padding: 0.75rem 1.5rem; cursor: pointer;"
+    >
+      {{ isLoading ? 'Analyzing...' : 'Send' }}
+    </button>
+  </div>
+</div>

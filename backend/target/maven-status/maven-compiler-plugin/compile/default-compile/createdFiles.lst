@@ -1,0 +1,10 @@
+com/marketconfidence/service/MarketDataService.class
+com/marketconfidence/MarketConfidenceApplication.class
+com/marketconfidence/controller/MarketDataController.class
+com/marketconfidence/MarketConfidenceApplication$1.class
+com/marketconfidence/controller/ChatController.class
+com/marketconfidence/model/MarketData.class
+com/marketconfidence/model/ChatMessage$MessageType.class
+com/marketconfidence/model/MarketAnalysis.class
+com/marketconfidence/service/ChatService.class
+com/marketconfidence/model/ChatMessage.class
