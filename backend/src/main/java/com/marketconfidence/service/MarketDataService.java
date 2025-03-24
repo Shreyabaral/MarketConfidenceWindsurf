@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
 public class MarketDataService {
     private static final Logger logger = LoggerFactory.getLogger(MarketDataService.class);
     private static final String MSCI_WORLD_SYMBOL = "URTH"; // MSCI World Index ETF
-    private static final String API_KEY = "646b6a0257msh501383d2209ca48p13f25cjsnbaef277d0403";
+    private static final String API_KEY = "API KEY";
     private static final String API_HOST = "apidojo-yahoo-finance-v1.p.rapidapi.com";
     
     private final ObjectMapper objectMapper = new ObjectMapper();
