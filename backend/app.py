@@ -15,7 +15,7 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Configure OpenAI API key
 openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -404,6 +404,319 @@ def simulate_strategies():
             'status': 'error',
             'message': str(e)
         }), 500
+
+@app.route('/api/simulate-portfolio', methods=['POST'])
+def simulate_portfolio():
+    """Simulate portfolio performance with different strategies during market events"""
+    try:
+        # Get request data
+        data = request.json
+        event = data.get('event', 'covid')
+        total_investment = data.get('investment', 10000)
+        
+        # Map event names to dates and impact parameters
+        event_parameters = {
+            'covid': {
+                'start_date': datetime(2020, 2, 1),
+                'end_date': datetime(2020, 6, 1),
+                'impact_date': datetime(2020, 3, 1),
+                'severity': 0.3
+            },
+            'financial_crisis': {
+                'start_date': datetime(2008, 8, 1),
+                'end_date': datetime(2008, 12, 31),
+                'impact_date': datetime(2008, 9, 15),
+                'severity': 0.35
+            },
+            'dot_com': {
+                'start_date': datetime(2000, 3, 1),
+                'end_date': datetime(2000, 7, 31),
+                'impact_date': datetime(2000, 4, 14),
+                'severity': 0.25
+            },
+            'inflation': {
+                'start_date': datetime(2022, 1, 1),
+                'end_date': datetime(2022, 5, 31),
+                'impact_date': datetime(2022, 2, 15),
+                'severity': 0.2
+            }
+        }
+        
+        # Use default event if the requested one is not defined
+        event_params = event_parameters.get(event, event_parameters['covid'])
+        
+        # Generate market data with event impact
+        market_data, recovery_days = generate_event_impact_data(
+            event, 
+            event_params['start_date'], 
+            event_params['end_date'],
+            event_params['impact_date'],
+            event_params['severity']
+        )
+        
+        # Calculate impact index (where the event impact starts)
+        impact_date_str = event_params['impact_date'].strftime('%Y-%m-%d')
+        impact_idx = 0
+        for i, item in enumerate(market_data):
+            if item['date'] >= impact_date_str:
+                impact_idx = i
+                break
+        
+        # Simulate different strategies
+        strategies_data = []
+        
+        # Initial portfolio value based on the investment amount
+        portfolio_value = total_investment
+        initial_units = portfolio_value / market_data[0]['close']
+        
+        # Calculate the event midpoint (approximately when the market has dropped halfway)
+        mid_event_idx = impact_idx + 5  # Assuming event impact occurs over 10 days
+        
+        # Simulate for each day in the data
+        for i, day_data in enumerate(market_data):
+            # Base portfolio values for each strategy
+            day_price = day_data['close']
+            
+            # Units for each strategy
+            units_withdraw = initial_units
+            units_add = initial_units
+            units_hold = initial_units
+            
+            # Apply strategies at the mid-point of the event
+            if i == mid_event_idx:
+                # Withdraw 20% strategy (sell 20% of holdings)
+                units_withdraw = initial_units * 0.8
+                
+                # Add 20% strategy (buy 20% more units at current price)
+                additional_units = (initial_units * 0.2) * (market_data[0]['close'] / day_price)
+                units_add = initial_units + additional_units
+            
+            # Calculate portfolio values for each strategy
+            value_withdraw = units_withdraw * day_price
+            value_add = units_add * day_price
+            value_hold = units_hold * day_price
+            
+            # Add to the dataset
+            strategies_data.append({
+                'date': day_data['date'],
+                'withdraw': round(value_withdraw, 2),
+                'add': round(value_add, 2),
+                'hold': round(value_hold, 2),
+                'marketPrice': day_price
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'event': event,
+            'strategies': strategies_data,
+            'eventInfo': {
+                'name': event.replace('_', ' ').title(),
+                'impactDate': impact_date_str,
+                'recoveryDays': recovery_days
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/validate-symbol', methods=['GET'])
+def validate_symbol():
+    """Validate a stock symbol using Yahoo Finance API"""
+    try:
+        symbol = request.args.get('symbol')
+        
+        if not symbol:
+            return jsonify({
+                'status': 'error',
+                'message': 'No symbol provided'
+            }), 400
+        
+        # Try to get ticker info from Yahoo Finance
+        try:
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
+            
+            # Check if we got valid data
+            if 'longName' in info:
+                return jsonify({
+                    'status': 'success',
+                    'name': info.get('longName', info.get('shortName', symbol)),
+                    'symbol': symbol
+                })
+            else:
+                # Return mock data for demo purposes
+                return jsonify({
+                    'status': 'success',
+                    'name': f"{symbol.upper()} - Mock Data",
+                    'symbol': symbol.upper()
+                })
+        except Exception as e:
+            # Return mock data if Yahoo Finance fails
+            return jsonify({
+                'status': 'success',
+                'name': f"{symbol.upper()} - Mock Data",
+                'symbol': symbol.upper()
+            })
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/asset-data', methods=['GET'])
+def get_asset_data():
+    """Get data for a specific asset (stock, ETF, fund)"""
+    try:
+        symbol = request.args.get('symbol')
+        period = request.args.get('period', '1y')  # Default to 1 year
+        
+        if not symbol:
+            return jsonify({
+                'status': 'error',
+                'message': 'No symbol provided'
+            }), 400
+        
+        # Try to get historical data from Yahoo Finance
+        try:
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period=period)
+            
+            # Format the data for frontend
+            formatted_data = []
+            for date, row in hist.iterrows():
+                formatted_data.append({
+                    'date': date.strftime('%Y-%m-%d'),
+                    'close': round(float(row['Close']), 2),
+                    'open': round(float(row['Open']), 2),
+                    'high': round(float(row['High']), 2),
+                    'low': round(float(row['Low']), 2),
+                    'volume': int(row['Volume'])
+                })
+            
+            # Get asset info
+            info = ticker.info
+            asset_info = {
+                'name': info.get('longName', info.get('shortName', symbol)),
+                'symbol': symbol,
+                'currency': info.get('currency', 'USD'),
+                'asset_type': 'Stock'  # Default to Stock
+            }
+            
+            # Try to determine asset type
+            if 'quoteType' in info:
+                quote_type = info['quoteType']
+                if quote_type == 'ETF':
+                    asset_info['asset_type'] = 'ETF'
+                elif quote_type == 'MUTUALFUND':
+                    asset_info['asset_type'] = 'Fund'
+            
+            return jsonify({
+                'status': 'success',
+                'data': formatted_data,
+                'info': asset_info
+            })
+            
+        except Exception as e:
+            # If Yahoo Finance fails, return mock data
+            mock_data = generate_mock_asset_data(symbol, period)
+            
+            return jsonify({
+                'status': 'success',
+                'data': mock_data,
+                'info': {
+                    'name': f'{symbol} Asset',
+                    'symbol': symbol,
+                    'currency': 'USD',
+                    'asset_type': 'Stock'
+                },
+                'note': 'Using mock data due to data retrieval issues'
+            })
+    
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+def generate_mock_asset_data(symbol, period):
+    """Generate mock data for an asset"""
+    end_date = datetime.now()
+    
+    # Determine start_date based on period
+    if period == '1d':
+        start_date = end_date - timedelta(days=1)
+        interval = timedelta(minutes=30)
+    elif period == '5d':
+        start_date = end_date - timedelta(days=5)
+        interval = timedelta(hours=2)
+    elif period == '1mo':
+        start_date = end_date - timedelta(days=30)
+        interval = timedelta(days=1)
+    elif period == '3mo':
+        start_date = end_date - timedelta(days=90)
+        interval = timedelta(days=1)
+    elif period == '6mo':
+        start_date = end_date - timedelta(days=180)
+        interval = timedelta(days=1)
+    elif period == '1y':
+        start_date = end_date - timedelta(days=365)
+        interval = timedelta(days=1)
+    elif period == '2y':
+        start_date = end_date - timedelta(days=365*2)
+        interval = timedelta(days=2)
+    elif period == '5y':
+        start_date = end_date - timedelta(days=365*5)
+        interval = timedelta(days=5)
+    else:
+        start_date = end_date - timedelta(days=365)
+        interval = timedelta(days=1)
+    
+    # Generate dates
+    dates = []
+    current_date = start_date
+    while current_date <= end_date:
+        # Skip weekends
+        if current_date.weekday() < 5:  # Monday to Friday
+            dates.append(current_date)
+        current_date += interval
+    
+    # Base price and trend factor based on symbol letters
+    symbol_val = sum(ord(c) for c in symbol.upper())
+    base_price = 50 + (symbol_val % 150)  # Price between 50 and 200
+    trend_factor = ((symbol_val % 10) - 5) / 100  # Between -0.05 and 0.05
+    
+    # Generate mock data
+    formatted_data = []
+    current_price = base_price
+    
+    for i, date in enumerate(dates):
+        # Apply trend over time
+        current_price *= (1 + trend_factor)
+        
+        # Add random daily fluctuation
+        daily_change = random.uniform(-0.02, 0.02)
+        current_price *= (1 + daily_change)
+        
+        # Other price points
+        open_price = current_price * random.uniform(0.99, 1.01)
+        high_price = max(open_price, current_price) * random.uniform(1.001, 1.01)
+        low_price = min(open_price, current_price) * random.uniform(0.99, 0.999)
+        volume = int(random.uniform(100000, 1000000))
+        
+        formatted_data.append({
+            'date': date.strftime('%Y-%m-%d'),
+            'close': round(current_price, 2),
+            'open': round(open_price, 2),
+            'high': round(high_price, 2),
+            'low': round(low_price, 2),
+            'volume': volume
+        })
+    
+    return formatted_data
 
 def get_event_time_period(event):
     """Use OpenAI to determine the appropriate time period for a global event"""
